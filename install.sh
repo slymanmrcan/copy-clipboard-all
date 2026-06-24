@@ -35,7 +35,9 @@ esac
 info "OS: $OS / Arch: $ARCH tespit edildi"
 
 # Pre-built binary indirmeyi dene (Go gerektirmez)
-BINARY_URL="https://github.com/$REPO/releases/latest/download/cb-${OS}-${ARCH}"
+ASSET_NAME="cb-${OS}-${ARCH}"
+BINARY_URL="https://github.com/$REPO/releases/latest/download/$ASSET_NAME"
+CHECKSUM_URL="https://github.com/$REPO/releases/latest/download/checksums.txt"
 info "Pre-built binary indiriliyor: $BINARY_URL"
 
 TMP=$(mktemp -d)
@@ -43,16 +45,39 @@ trap 'rm -rf "$TMP"' EXIT
 
 DOWNLOAD_SUCCESS=false
 if command -v curl &>/dev/null; then
-  if curl -fsSL "$BINARY_URL" -o "$TMP/$BINARY"; then
+  if curl -fsSL "$BINARY_URL" -o "$TMP/$BINARY" &&
+     curl -fsSL "$CHECKSUM_URL" -o "$TMP/checksums.txt"; then
     DOWNLOAD_SUCCESS=true
   fi
 elif command -v wget &>/dev/null; then
-  if wget -qO "$TMP/$BINARY" "$BINARY_URL"; then
+  if wget -qO "$TMP/$BINARY" "$BINARY_URL" &&
+     wget -qO "$TMP/checksums.txt" "$CHECKSUM_URL"; then
     DOWNLOAD_SUCCESS=true
   fi
 fi
 
 if [ "$DOWNLOAD_SUCCESS" = "true" ]; then
+  EXPECTED_CHECKSUM=$(awk -v asset="$ASSET_NAME" '$2 == asset || $2 == "*" asset {print $1}' "$TMP/checksums.txt")
+  if ! [[ "$EXPECTED_CHECKSUM" =~ ^[a-fA-F0-9]{64}$ ]]; then
+    warn "Release checksum kaydı bulunamadı veya geçersiz."
+    DOWNLOAD_SUCCESS=false
+  elif command -v sha256sum &>/dev/null; then
+    ACTUAL_CHECKSUM=$(sha256sum "$TMP/$BINARY" | awk '{print $1}')
+  elif command -v shasum &>/dev/null; then
+    ACTUAL_CHECKSUM=$(shasum -a 256 "$TMP/$BINARY" | awk '{print $1}')
+  else
+    warn "SHA-256 doğrulaması için sha256sum veya shasum bulunamadı."
+    DOWNLOAD_SUCCESS=false
+  fi
+
+  if [ "$DOWNLOAD_SUCCESS" = "true" ] && [ "$EXPECTED_CHECKSUM" != "$ACTUAL_CHECKSUM" ]; then
+    warn "İndirilen binary checksum doğrulamasından geçemedi."
+    DOWNLOAD_SUCCESS=false
+  fi
+fi
+
+if [ "$DOWNLOAD_SUCCESS" = "true" ]; then
+  info "SHA-256 checksum doğrulandı."
   if [ -w "$INSTALL_DIR" ]; then
     mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
   else
@@ -61,7 +86,7 @@ if [ "$DOWNLOAD_SUCCESS" = "true" ]; then
   chmod +x "$INSTALL_DIR/$BINARY"
   info "✓ $BINARY $INSTALL_DIR dizinine kuruldu (pre-built)!"
 else
-  warn "Pre-built binary indirilemedi (henüz bir release yayınlanmamış olabilir)."
+  warn "Doğrulanmış pre-built binary kullanılamadı; kaynak koddan derleme denenecek."
   
   if command -v go &>/dev/null; then
     info "Go bulundu, kaynak koddan derleniyor..."

@@ -64,6 +64,22 @@ cb -v
 | Linux (Wayland) | `wl-copy` / `wl-paste` | `sudo apt install wl-clipboard` |
 | Windows | `clip.exe` / PowerShell | Zaten kurulu |
 
+## Test ve kalite kontrolleri
+
+```bash
+make test       # race detector ile testler
+make coverage   # coverage.out üretir ve minimum %85 kapsam ister
+make lint       # golangci-lint
+```
+
+SonarQube analizi `.github/workflows/sonarqube.yml` üzerinden çalışır.
+GitHub repository secrets bölümüne aşağıdaki değerleri ekleyin:
+
+- `SONAR_TOKEN`: SonarQube proje analiz token'ı
+- `SONAR_HOST_URL`: SonarQube sunucu adresi
+
+SonarQube proje anahtarı `copy-clipboard-all` olarak ayarlanmıştır.
+
 ## Lisans
 
 MIT
