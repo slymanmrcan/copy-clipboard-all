@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const version = "1.1.0"
+const version = "1.2.0"
 
 const usage = `cb - clipboard CLI tool
 
