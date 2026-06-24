@@ -209,13 +209,13 @@ func osc52Copy(data []byte) {
 		fmt.Printf("\033]52;c;%s\a", encoded)
 		return
 	}
-	defer tty.Close()
+	defer func() { _ = tty.Close() }()
 
 	// tmux içindeyse wrap et
 	if os.Getenv("TMUX") != "" {
-		fmt.Fprintf(tty, "\033Ptmux;\033\033]52;c;%s\a\033\\", encoded)
+		_, _ = fmt.Fprintf(tty, "\033Ptmux;\033\033]52;c;%s\a\033\\", encoded)
 	} else {
-		fmt.Fprintf(tty, "\033]52;c;%s\a", encoded)
+		_, _ = fmt.Fprintf(tty, "\033]52;c;%s\a", encoded)
 	}
 }
 
