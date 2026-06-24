@@ -103,11 +103,15 @@ echo "  ls | cb             # komut çıktısını kopyala"
 echo "  cb -p               # clipboard'ı ekrana yaz"
 echo ""
 
-# Linux kullanıcısına xclip hatırlat
+# Linux kullanıcısına xclip hatırlat (SSH/Headless dışında)
 if [ "$OS" = "linux" ]; then
-  if ! command -v xclip &>/dev/null && ! command -v xsel &>/dev/null && ! command -v wl-copy &>/dev/null; then
-    warn "Linux'ta clipboard için xclip gerekli:"
-    warn "  sudo apt install xclip   (Debian/Ubuntu)"
-    warn "  sudo pacman -S xclip     (Arch)"
+  if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] || [ -z "$DISPLAY" ]; then
+    info "SSH/Headless ortam algılandı: OSC 52 kullanılacaktır, xclip/xsel kurmanıza gerek yoktur."
+  else
+    if ! command -v xclip &>/dev/null && ! command -v xsel &>/dev/null && ! command -v wl-copy &>/dev/null; then
+      warn "Yerel masaüstü (GUI) ortamında kopyalama için xclip gereklidir:"
+      warn "  sudo apt install xclip   (Debian/Ubuntu)"
+      warn "  sudo pacman -S xclip     (Arch)"
+    fi
   fi
 fi
