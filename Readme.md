@@ -78,7 +78,7 @@ GitHub repository secrets bölümüne aşağıdaki değerleri ekleyin:
 - `SONAR_TOKEN`: SonarQube proje analiz token'ı
 - `SONAR_HOST_URL`: SonarQube sunucu adresi
 
-SonarQube proje anahtarı `copy-clipboard-all` olarak ayarlanmıştır.
+SonarQube proje anahtarı `copy-board` olarak ayarlanmıştır.
 
 ## Lisans
 
