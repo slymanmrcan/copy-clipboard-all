@@ -17,18 +17,46 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
 
       - name: Run tests and enforce coverage
         run: make coverage
+
+      - name: Validate SonarQube configuration
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::error::SONAR_TOKEN repository secret is missing"
+            exit 1
+          fi
+          if [ -z "$SONAR_HOST_URL" ]; then
+            echo "::error::SONAR_HOST_URL repository secret is missing"
+            exit 1
+          fi
+
+      - name: Check SonarQube availability
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          response=$(curl --fail --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 20 \
+            "$SONAR_HOST_URL/api/system/status")
+          status=$(printf '%s' "$response" | jq -r '.status // empty')
+          if [ "$status" != "UP" ]; then
+            echo "::error::SonarQube is not ready. Reported status: ${status:-unknown}"
+            exit 1
+          fi
 
       - name: SonarQube scan
         uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
