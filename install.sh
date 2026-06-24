@@ -34,40 +34,65 @@ esac
 
 info "OS: $OS / Arch: $ARCH tespit edildi"
 
-# Kaynak koddan derle (go yüklüyse)
-if command -v go &>/dev/null; then
-  info "Go bulundu, kaynak koddan derleniyor..."
+# Pre-built binary indirmeyi dene (Go gerektirmez)
+BINARY_URL="https://github.com/$REPO/releases/latest/download/cb-${OS}-${ARCH}"
+info "Pre-built binary indiriliyor: $BINARY_URL"
 
-  TMP=$(mktemp -d)
-  trap 'rm -rf "$TMP"' EXIT
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
 
-  # GitHub'dan kaynak indir
-  if command -v curl &>/dev/null; then
-    curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.tar.gz" -o "$TMP/cb.tar.gz"
-  elif command -v wget &>/dev/null; then
-    wget -qO "$TMP/cb.tar.gz" "https://github.com/$REPO/archive/refs/heads/main.tar.gz"
-  else
-    errxit "curl veya wget bulunamadı"
+DOWNLOAD_SUCCESS=false
+if command -v curl &>/dev/null; then
+  if curl -fsSL "$BINARY_URL" -o "$TMP/$BINARY"; then
+    DOWNLOAD_SUCCESS=true
   fi
+elif command -v wget &>/dev/null; then
+  if wget -qO "$TMP/$BINARY" "$BINARY_URL"; then
+    DOWNLOAD_SUCCESS=true
+  fi
+fi
 
-  tar -xzf "$TMP/cb.tar.gz" -C "$TMP"
-  cd "$TMP"/cb-main
-
-  go build -ldflags="-s -w" -o "$TMP/$BINARY" .
-
+if [ "$DOWNLOAD_SUCCESS" = "true" ]; then
   if [ -w "$INSTALL_DIR" ]; then
     mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
   else
     sudo mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
   fi
-
   chmod +x "$INSTALL_DIR/$BINARY"
-  info "✓ $BINARY $INSTALL_DIR dizinine kuruldu!"
-
+  info "✓ $BINARY $INSTALL_DIR dizinine kuruldu (pre-built)!"
 else
-  warn "Go bulunamadı. Lütfen Go'yu kurun: https://go.dev/dl/"
-  warn "veya 'go build -o cb .' komutuyla manuel derleyin."
-  exit 1
+  warn "Pre-built binary indirilemedi (henüz bir release yayınlanmamış olabilir)."
+  
+  if command -v go &>/dev/null; then
+    info "Go bulundu, kaynak koddan derleniyor..."
+    
+    # GitHub'dan kaynak indir
+    if command -v curl &>/dev/null; then
+      curl -fsSL "https://github.com/$REPO/archive/refs/heads/main.tar.gz" -o "$TMP/cb.tar.gz"
+    elif command -v wget &>/dev/null; then
+      wget -qO "$TMP/cb.tar.gz" "https://github.com/$REPO/archive/refs/heads/main.tar.gz"
+    else
+      errxit "curl veya wget bulunamadı"
+    fi
+
+    tar -xzf "$TMP/cb.tar.gz" -C "$TMP"
+    cd "$TMP"/*/ # dinamik olarak çıkarılan klasöre gir
+    
+    go build -ldflags="-s -w" -o "$TMP/$BINARY" .
+
+    if [ -w "$INSTALL_DIR" ]; then
+      mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
+    else
+      sudo mv "$TMP/$BINARY" "$INSTALL_DIR/$BINARY"
+    fi
+
+    chmod +x "$INSTALL_DIR/$BINARY"
+    info "✓ $BINARY $INSTALL_DIR dizinine kuruldu (derlendi)!"
+  else
+    warn "Go bulunamadı. Lütfen Go'yu kurun: https://go.dev/dl/"
+    warn "veya manuel olarak bir binary dosyası yükleyin."
+    exit 1
+  fi
 fi
 
 echo ""
